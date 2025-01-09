@@ -146,21 +146,7 @@ void  word_print(char *str){
     int wc = 0;         //counts words
     int wlen = 0;       //length of current word
     bool word_start = false;    //am I at the start of a new word
-// If word_start is true, we are in an active word, so each time through the loop
-// we would want to:
-//      1. Check if the current character is not a SPACE_CHARACTER
-//         a.  IF it is NOT A SPACE -> print the current character, increment wlen
-//
-//      2.  In the loop there are 2 conditions that indicate a current word is ending:
-//          a. word_start is false and the current character is a SPACE_CHARACTER
-//                  OR
-//          b. the current loop index is the last character in the string (aka the
-//             loop index is last_char_idx) 
-//
-//          IF either of these conditions are true:
-//              * Print the word length for current word - printf(" (%d)\n", wlen);
-//              * Set word_start to false
-//              * Set wlen to 0 given we are starting a new word
+
     last_char_idx = 0;
     while (str[last_char_idx] != '\0') {
         last_char_idx++;
@@ -231,9 +217,11 @@ int main(int argc, char *argv[]){
     switch (opt){
         case 'c':
             int wc = 0;         //variable for the word count
-
+            
             //TODO: #2. Call count_words, return of the result
             //          should go into the wc variable
+
+            wc = count_words(str);
             printf("Word Count: %d\n", wc);
             break;
         case 'r':
