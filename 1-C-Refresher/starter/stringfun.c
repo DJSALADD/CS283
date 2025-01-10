@@ -50,13 +50,13 @@ int count_words(char *str){
         char current_char = str[i];
 
         if (!word_start) {
-            if (current_char == SPACE_CHARACTER) {
+            if (current_char == SPACE_CHAR) {
                 continue;
             }
             wc++;
             word_start = true;
         } else {
-            if (current_char == SPACE_CHARACTER) {
+            if (current_char == SPACE_CHAR) {
                 word_start = false;
             }
         }
@@ -91,6 +91,7 @@ void  reverse_string(char *str){
     while (str[end_idx] != '\0') {
         end_idx++;
     }
+    end_idx--;
 
     while (end_idx > start_idx) {
         tmp_char = str[start_idx];
@@ -151,26 +152,28 @@ void  word_print(char *str){
     while (str[last_char_idx] != '\0') {
         last_char_idx++;
     }
-    for (int i = 0; str[i] != '\0'; i++) {
+    last_char_idx--;
+
+    for (int i = 0; i <= last_char_idx; i++) {
         char current_char = str[i];
 
         if (!word_start) {
-            if (current_char == SPACE_CHARACTER) {
+            if (current_char == SPACE_CHAR) {
                 continue;
             }
             wc++;
             word_start = true;
             wlen = 0;
-            printf("%d. ", wc);
+            printf("%d. %c", wc, current_char);
         } else {
-            if (current_char != SPACE_CHARACTER) {
+            if (current_char != SPACE_CHAR) {
                 printf("%c", current_char);
                 wlen++;
             }
-            if (current_char == SPACE_CHARACTER || (i == last_char_idx)) {
+            if (current_char == SPACE_CHAR || (i == last_char_idx)) {
                 printf(" (%d)\n", wlen);
                 word_start = false;
-                w_len = 0;
+                wlen = 0;
             }
         } 
     }
@@ -221,30 +224,40 @@ int main(int argc, char *argv[]){
             //TODO: #2. Call count_words, return of the result
             //          should go into the wc variable
 
-            wc = count_words(str);
+            wc = count_words(input_string);
             printf("Word Count: %d\n", wc);
             break;
         case 'r':
             //TODO: #3. Call reverse string using input_string
             //          input string should be reversed
+            reverse_string(input_string);
             printf("Reversed string: %s\n", input_string);
-
             //TODO:  #4.  The algorithm provided in the directions 
             //            state we simply return after swapping all 
             //            characters because the string is reversed 
             //            in place.  Briefly explain why the string 
             //            is reversed in place - place in a comment
+
+            // The string is reversed in place because we are passing
+            // the input_string to reverse_string, and that takes
+            // the pointer of that location and directly performs the
+            // swaps on the original memory location of input_string.
             break;
         case 'w':
             printf("Word Print\n----------\n");
 
             //TODO: #5. Call word_print, output should be
             //          printed by that function
+            word_print(input_string);
             break;
 
         //TODO: #6. What is the purpose of the default option here?
         //          Please describe replacing this TODO comment with
         //          your thoughts.
+        // The default option is used to provide context to the user
+        // that the input they chose is invalid. Also it ensures no 
+        // unintended side effects happen from a user inputting an 
+        // invalid option. 
         default:
             usage(argv[0]);
             printf("Invalid option %c provided, exiting!\n", opt);
@@ -253,4 +266,11 @@ int main(int argc, char *argv[]){
     //TODO: #7. Why did we place a break statement on each case
     //          option, and did not place one on default.  What
     //          would happen if we forgot the break statement?
+    // We placed a break statment on each case so that the 
+    // rest of the break statemnt would not get executed. The default 
+    // does not need a break statement since the default has the rest 
+    // of the code within the switch statemnt. If we forgot any break
+    // statement in the other cases, it would lead all cases below
+    // the case that forgot the break to be executed regardless of
+    // the intended conditions being met or not. 
 }
