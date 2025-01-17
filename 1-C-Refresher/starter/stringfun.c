@@ -13,8 +13,9 @@ int  setup_buff(char *, char *, int);
 //prototypes for functions to handle required functionality
 int  count_words(char *, int, int);
 int reverse_string(char *, char *, int);
-int word_print(char *, char *, int);
+int word_print(char *, int);
 //add additional prototypes here
+int replace_word(char *, char *, char *, int);
 
 int reverse_string(char *buff, char *reverse_str, int str_len) {
     char *end_of_str = buff + str_len -1;
@@ -45,22 +46,9 @@ int reverse_string(char *buff, char *reverse_str, int str_len) {
 }
 
 int setup_buff(char *buff, char *user_str, int len){
-
-    int str_length = 0;
-    char *temp_str = user_str;
-
-    while (*temp_str != '\0') {
-        str_length++;
-        temp_str++;
-    }
-
-    //user string greater than char size
-    //if (str_length > len) {
-        //return -1;
-    //}
     char *buff_ptr = buff;
     char *str_ptr = user_str;
-    int str_len = 0;
+    int buff_len = 0;
     int last_was_space = 0;
     int first_word = 1;
 
@@ -73,7 +61,7 @@ int setup_buff(char *buff, char *user_str, int len){
             else if (!last_was_space) {
                 *buff_ptr = ' ';
                 buff_ptr++;
-                str_len++;
+                buff_len++;
                 last_was_space = 1;
             }
         }
@@ -81,7 +69,7 @@ int setup_buff(char *buff, char *user_str, int len){
             first_word = 0;
             *buff_ptr = *str_ptr;
             buff_ptr++;
-            str_len++;
+            buff_len++;
             last_was_space = 0;
         }
         str_ptr++;
@@ -95,11 +83,16 @@ int setup_buff(char *buff, char *user_str, int len){
         *buff_ptr = '.';
         buff_ptr++;
     }
+
+    //user string greater than char size
+    if (buff_len > len) {
+        return -1;
+    }
     
-    return str_len;
+    return buff_len;
 }
 
-int word_print(char *buff, char *user_str, int str_len) {
+int word_print(char *buff, int str_len) {
     int wc = 0;         //counts words
     int wlen = 0;       //length of current word
     int word_start = 0;    //am I at the start of a new word
@@ -177,6 +170,98 @@ int count_words(char *buff, int len, int str_len){
     return wc;
 }
 
+int replace_word(char *buff, char *replace, char *replacement, int len){
+    char *buff_ptr = buff;     // Pointer to traverse the original string
+    char *searchStart = NULL; // Pointer to locate the first occurrence of the search word
+
+    char *temp_buff;
+    temp_buff = (char *)malloc(BUFFER_SZ * sizeof(char));
+    char *replace_ptr = replace;
+    char *replacement_ptr = replacement;
+
+    int replaceSize = 0;
+    while (*replace_ptr != '\0') {
+        replaceSize++;
+        replace_ptr++;
+    }
+    replace_ptr = replace;
+
+    // Find the first occurrence of the search word in the original string
+
+    while (*buff_ptr != '.') {
+        if (*buff_ptr == *replace_ptr) {
+
+            char *temp_char = buff_ptr;
+            char *temp_replace = replace_ptr;
+
+            while (*temp_char == *temp_replace && *temp_replace != '\0') {
+                temp_char++;
+                temp_replace++;
+            }
+
+            if (*temp_replace == '\0') {
+                searchStart = buff_ptr;
+                break;
+            }
+        }
+        buff_ptr++;
+    }
+
+    // If the search word is not found
+
+    if (searchStart == NULL) {
+        printf("Search word not found in the string.\n");
+        return -1;
+    }
+
+    // Copy characters before the match into the buffer
+    buff_ptr = buff;
+    char *temp_buff_ptr = temp_buff;
+    while (buff_ptr != searchStart) {
+        *temp_buff_ptr = *buff_ptr;
+        buff_ptr++;
+        temp_buff_ptr++;
+    }
+
+    //Add the replacement
+    while (*replacement_ptr != '\0') {
+        *temp_buff_ptr = *replacement_ptr;
+        replacement_ptr++;
+        temp_buff_ptr++;
+    }
+
+    //skip ahead the replaced
+    for (int i = 0; i < replaceSize; i++) {
+        buff_ptr++;
+    }
+
+    //Finish copying temp_buff
+    while (*buff_ptr != '.' && *buff_ptr != '\0') {
+        *temp_buff_ptr = *buff_ptr;
+        buff_ptr++;
+        temp_buff_ptr++;
+    }
+
+    //Add . s
+    while ((temp_buff_ptr - temp_buff) < len) {
+        *temp_buff_ptr = '.';
+        *temp_buff_ptr++;
+    }
+
+
+    //Lastly copy over temp_buff to buff
+    temp_buff_ptr = temp_buff;
+    buff_ptr = buff;
+    while (*temp_buff_ptr != '\0') {
+        *buff_ptr = *temp_buff_ptr;
+        buff_ptr++;
+        temp_buff_ptr++;
+    }
+
+    free(temp_buff);
+
+    return 0;
+}
 //ADD OTHER HELPER FUNCTIONS HERE FOR OTHER REQUIRED PROGRAM OPTIONS
 
 int main(int argc, char *argv[]){
@@ -223,7 +308,7 @@ int main(int argc, char *argv[]){
     // CODE GOES HERE FOR #3
     buff = (char *)malloc(BUFFER_SZ * sizeof(char));
 
-    user_str_len = setup_buff(buff, input_string, BUFFER_SZ);     //see todos
+    user_str_len = setup_buff(buff, input_string, BUFFER_SZ);
     if (user_str_len < 0){
         printf("Error setting up buffer, error = %d", user_str_len);
         exit(2);
@@ -231,12 +316,13 @@ int main(int argc, char *argv[]){
 
     switch (opt){
         case 'c':
-            rc = count_words(buff, BUFFER_SZ, user_str_len);  //you need to implement
+            rc = count_words(buff, BUFFER_SZ, user_str_len);
             if (rc < 0){
                 printf("Error counting words, rc = %d", rc);
                 exit(2);
             }
             printf("Word Count: %d\n", rc);
+            print_buff(buff,BUFFER_SZ);
             break;
 
         //TODO:  #5 Implement the other cases for 'r' and 'w' by extending
@@ -244,31 +330,46 @@ int main(int argc, char *argv[]){
         case 'r':
             char *reverse_buff;
             reverse_buff = (char *)malloc(BUFFER_SZ * sizeof(char));
-            rc = reverse_string(buff, reverse_buff, user_str_len);  //you need to implement
+            rc = reverse_string(buff, reverse_buff, user_str_len);
             if (rc < 0){
                 printf("Error reversing words, rc = %d", rc);
                 exit(2);
             }
             printf("Reversed String: %s\n", reverse_buff);
             free(reverse_buff);
+            print_buff(buff,BUFFER_SZ);
             break;
 
-            break;
         case 'w':
-
-            rc = word_print(buff, reverse_buff, user_str_len);  //you need to implement
+            rc = word_print(buff, user_str_len);
             if (rc < 0){
                 printf("Error reversing words, rc = %d", rc);
                 exit(2);
             }
             printf("\n");
             printf("\n");
-            rc = count_words(buff, BUFFER_SZ, user_str_len);  //you need to implement
+            rc = count_words(buff, BUFFER_SZ, user_str_len);
             if (rc < 0){
                 printf("Error counting words, rc = %d", rc);
                 exit(2);
             }
             printf("Number of words returned: %d\n", rc);
+            print_buff(buff,BUFFER_SZ);
+            break;
+        case 'x':
+            //printf("Not Implemented!");
+            char *replace = argv[3]; //capture the word to be replaced
+            char *replacement = argv[4]; //capture the word to replace
+
+            rc = replace_word(buff, replace, replacement, user_str_len);
+            if (rc < 0){
+                printf("Error reversing words, rc = %d", rc);
+                exit(2);
+            }
+
+            print_buff(buff,BUFFER_SZ);
+
+
             break;
         default:
             usage(argv[0]);
@@ -276,7 +377,6 @@ int main(int argc, char *argv[]){
     }
 
     //TODO:  #6 Dont forget to free your buffer before exiting
-    print_buff(buff,BUFFER_SZ);
     free(buff);
     exit(0);
 }
@@ -288,3 +388,8 @@ int main(int argc, char *argv[]){
 //          the buff variable will have exactly 50 bytes?
 //  
 //          PLACE YOUR ANSWER HERE
+//          Providing the pointer and the length is good practice since the 
+//          length of buff could be altered to changed dynamically at runtime,
+//          and if this were the case the length argument would need to be passed.
+//          By passing the length argument, we open the code to be modified easier
+//          in the future.

@@ -35,7 +35,8 @@ Buffer:  [The strange spaces should be removed from this....]" ]
 @test "reverse" {
     run ./stringfun -r "Reversed sentences look very weird"
     [ "$status" -eq 0 ]
-    [ "$output" = "Buffer:  [driew yrev kool secnetnes desreveR................]" ]
+    [ "$output" = "Reversed String: driew yrev kool secnetnes desreveR
+Buffer:  [driew yrev kool secnetnes desreveR................]" ]
 }
 
 @test "print words" {
@@ -59,7 +60,8 @@ Buffer:  [Lets get a lot of words to test...................]" ]
 @test "check max length" {
     run ./stringfun -r "This is the maximum length string that should work"
     [ "$status" -eq 0 ]
-    [ "$output" = "Buffer:  [krow dluohs taht gnirts htgnel mumixam eht si sihT]" ]
+    [ "$output" = "Reversed String: krow dluohs taht gnirts htgnel mumixam eht si sihT
+Buffer:  [krow dluohs taht gnirts htgnel mumixam eht si sihT]" ]
 }
 
 @test "check over max length" {
