@@ -11,7 +11,7 @@ void print_buff(char *, int);
 int  setup_buff(char *, char *, int);
 
 //prototypes for functions to handle required functionality
-int  count_words(char *, int, int);
+int  count_words(char *, int);
 int reverse_string(char *, char *, int);
 int word_print(char *, int);
 //add additional prototypes here
@@ -22,6 +22,8 @@ int reverse_string(char *buff, char *reverse_str, int str_len) {
     char *beg_of_str = buff;
     char temp;
 
+    //iterating throught the buff and swapping the beggining index with
+    //the ending one
     while (beg_of_str < end_of_str) {
         temp = *beg_of_str;
         *beg_of_str = *end_of_str;
@@ -35,6 +37,7 @@ int reverse_string(char *buff, char *reverse_str, int str_len) {
     char *buff_ptr = buff;
     char *reverse_ptr = reverse_str;
 
+    //copying buff to reverese_str for printing
     for (int i = 0; i < str_len; i++) {
         *reverse_ptr = *buff_ptr;
         reverse_ptr++;
@@ -52,8 +55,10 @@ int setup_buff(char *buff, char *user_str, int len){
     int last_was_space = 0;
     int first_word = 1;
 
+    //iterate through user_str and copy to buff, removing excess spaces and tabs along the way
     while (*str_ptr != '\0') {
         if (*str_ptr == ' ' || *str_ptr == '\t') {
+            //if the first word has not been reached yet, we skip and continue
             if (first_word) {
                 str_ptr++;
                 continue;
@@ -66,7 +71,7 @@ int setup_buff(char *buff, char *user_str, int len){
             }
         }
         else {
-            first_word = 0;
+            first_word = 0; //first word was reached so no more auto skipping
             *buff_ptr = *str_ptr;
             buff_ptr++;
             buff_len++;
@@ -75,10 +80,12 @@ int setup_buff(char *buff, char *user_str, int len){
         str_ptr++;
     }
 
+    //decrementing buff_ptr to account for last character being a space
     if (last_was_space) {
         buff_ptr--;
     }
 
+    //Fill in the rest of the buff with . s
     while (buff_ptr < buff + len) {
         *buff_ptr = '.';
         buff_ptr++;
@@ -93,14 +100,11 @@ int setup_buff(char *buff, char *user_str, int len){
 }
 
 int word_print(char *buff, int str_len) {
-    int wc = 0;         //counts words
-    int wlen = 0;       //length of current word
-    int word_start = 0;    //am I at the start of a new word
+    int wc = 0; //counts words
+    int wlen = 0; //length of current word
+    int word_start = 0; //am I at the start of a new word
 
     char *buff_ptr = buff;
-
-    printf("Word Print\n");
-    printf("----------\n");
 
     for (int i = 0; i <= str_len - 1; i++) {
         char current_char = *buff_ptr;
@@ -130,7 +134,7 @@ int word_print(char *buff, int str_len) {
     return 0;
 }
 
-
+//changed to align with test cases
 void print_buff(char *buff, int len){
     printf("Buffer:  [");
     for (int i=0; i<len; i++){
@@ -145,12 +149,13 @@ void usage(char *exename){
 
 }
 
-int count_words(char *buff, int len, int str_len){
-    int wc = 0;
+int count_words(char *buff, int str_len){
+    int wc = 0; //counts words
     int word_start = 0;
     char *ptr = buff;
 
-
+    //goes through and adds to wc for each time a space
+    //indicating a new word occurs
     for (int i = 0; i < str_len; i++) {
         if (!word_start) {
             if (*ptr == ' ') {
@@ -171,23 +176,23 @@ int count_words(char *buff, int len, int str_len){
 }
 
 int replace_word(char *buff, char *replace, char *replacement, int len){
-    char *buff_ptr = buff;     // Pointer to traverse the original string
-    char *searchStart = NULL; // Pointer to locate the first occurrence of the search word
+    char *buff_ptr = buff;     //pointer to traverse the original string
+    char *searchStart = NULL; //pointer to locate the first occurrence of the search word
 
-    char *temp_buff;
+    char *temp_buff; //buff to temporarily hold the new string version
     temp_buff = (char *)malloc(BUFFER_SZ * sizeof(char));
-    char *replace_ptr = replace;
-    char *replacement_ptr = replacement;
+    char *replace_ptr = replace; //string to be replaced
+    char *replacement_ptr = replacement; //string to replace
 
+    //get the size of the word being replaced
     int replaceSize = 0;
     while (*replace_ptr != '\0') {
         replaceSize++;
         replace_ptr++;
     }
-    replace_ptr = replace;
+    replace_ptr = replace; //rest pointer
 
-    // Find the first occurrence of the search word in the original string
-
+    //find the first occurrence of the search word in the original string
     while (*buff_ptr != '.') {
         if (*buff_ptr == *replace_ptr) {
 
@@ -207,14 +212,13 @@ int replace_word(char *buff, char *replace, char *replacement, int len){
         buff_ptr++;
     }
 
-    // If the search word is not found
-
+    //if the search word is not found
     if (searchStart == NULL) {
         printf("Search word not found in the string.\n");
         return -1;
     }
 
-    // Copy characters before the match into the buffer
+    //copy characters before the match into the buffer
     buff_ptr = buff;
     char *temp_buff_ptr = temp_buff;
     while (buff_ptr != searchStart) {
@@ -223,7 +227,7 @@ int replace_word(char *buff, char *replace, char *replacement, int len){
         temp_buff_ptr++;
     }
 
-    //Add the replacement
+    //add the replacement
     while (*replacement_ptr != '\0') {
         *temp_buff_ptr = *replacement_ptr;
         replacement_ptr++;
@@ -235,21 +239,21 @@ int replace_word(char *buff, char *replace, char *replacement, int len){
         buff_ptr++;
     }
 
-    //Finish copying temp_buff
+    //finish copying temp_buff
     while (*buff_ptr != '.' && *buff_ptr != '\0') {
         *temp_buff_ptr = *buff_ptr;
         buff_ptr++;
         temp_buff_ptr++;
     }
 
-    //Add . s
+    //add . s
     while ((temp_buff_ptr - temp_buff) < len) {
         *temp_buff_ptr = '.';
         *temp_buff_ptr++;
     }
 
 
-    //Lastly copy over temp_buff to buff
+    //lastly copy over temp_buff to buff
     temp_buff_ptr = temp_buff;
     buff_ptr = buff;
     while (*temp_buff_ptr != '\0') {
@@ -294,7 +298,7 @@ int main(int argc, char *argv[]){
 
     //TODO:  #2 Document the purpose of the if statement below
     //      PLACE A COMMENT BLOCK HERE EXPLAINING
-    // handle too many arguments by printing error message and exiting
+    // amkes sure there is a string provided to operate on and exiting if not
     if (argc < 3){
         usage(argv[0]);
         exit(1);
@@ -310,15 +314,15 @@ int main(int argc, char *argv[]){
 
     user_str_len = setup_buff(buff, input_string, BUFFER_SZ);
     if (user_str_len < 0){
-        printf("Error setting up buffer, error = %d", user_str_len);
+        printf("Error setting up buffer, error = %d\n", user_str_len);
         exit(2);
     }
 
     switch (opt){
         case 'c':
-            rc = count_words(buff, BUFFER_SZ, user_str_len);
+            rc = count_words(buff, user_str_len);
             if (rc < 0){
-                printf("Error counting words, rc = %d", rc);
+                printf("Error counting words, rc = %d\n", rc);
                 exit(2);
             }
             printf("Word Count: %d\n", rc);
@@ -328,11 +332,12 @@ int main(int argc, char *argv[]){
         //TODO:  #5 Implement the other cases for 'r' and 'w' by extending
         //       the case statement options
         case 'r':
+            //allocating reverse_buff to print
             char *reverse_buff;
             reverse_buff = (char *)malloc(BUFFER_SZ * sizeof(char));
             rc = reverse_string(buff, reverse_buff, user_str_len);
             if (rc < 0){
-                printf("Error reversing words, rc = %d", rc);
+                printf("Error reversing words, rc = %d\n", rc);
                 exit(2);
             }
             printf("Reversed String: %s\n", reverse_buff);
@@ -341,34 +346,34 @@ int main(int argc, char *argv[]){
             break;
 
         case 'w':
+            //start print
+            printf("Word Print\n");
+            printf("----------\n");
             rc = word_print(buff, user_str_len);
             if (rc < 0){
-                printf("Error reversing words, rc = %d", rc);
+                printf("Error reversing words, rc = %d\n", rc);
                 exit(2);
             }
             printf("\n");
             printf("\n");
-            rc = count_words(buff, BUFFER_SZ, user_str_len);
+            rc = count_words(buff, user_str_len);
             if (rc < 0){
-                printf("Error counting words, rc = %d", rc);
+                printf("Error counting words, rc = %d\n", rc);
                 exit(2);
             }
             printf("Number of words returned: %d\n", rc);
             print_buff(buff,BUFFER_SZ);
             break;
         case 'x':
-            //printf("Not Implemented!");
             char *replace = argv[3]; //capture the word to be replaced
-            char *replacement = argv[4]; //capture the word to replace
+            char *replacement = argv[4]; //capture the word to replace the replaced with
 
             rc = replace_word(buff, replace, replacement, user_str_len);
             if (rc < 0){
-                printf("Error reversing words, rc = %d", rc);
+                printf("Error reversing words, rc = %d\n", rc);
                 exit(2);
             }
-
             print_buff(buff,BUFFER_SZ);
-
 
             break;
         default:
