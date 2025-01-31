@@ -124,14 +124,14 @@ int add_student(int fd, int id, char *fname, char *lname, int gpa){
         return ERR_DB_FILE;
     }
     
-    // 
+    // Empty Student
     student_t new_student;
     if (read(fd, &new_student, STUDENT_RECORD_SIZE) != STUDENT_RECORD_SIZE)
     {
         memcpy(&new_student, &EMPTY_STUDENT_RECORD, sizeof(student_t));
     }
    
-    // 
+    // Student exists as nothing
     if (memcmp(&new_student, &EMPTY_STUDENT_RECORD, STUDENT_RECORD_SIZE) != 0)
     {
         printf(M_ERR_DB_ADD_DUP, id);
