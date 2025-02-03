@@ -5,7 +5,7 @@ Please answer the following questions and submit in your repo for the second ass
 
 1. In this assignment I asked you provide an implementation for the `get_student(...)` function because I think it improves the overall design of the database application.   After you implemented your solution do you agree that externalizing `get_student(...)` into it's own function is a good design strategy?  Briefly describe why or why not.
 
-    > **Answer**:  I believe that putting get_student(...) into its own function is a good design strategy as it allows for code reuse with the delete_student function using it and allowing for the get_student(...) to be used as its own independent function. 
+    > **Answer**:  I believe that putting get_student(...) into its own function is a good design strategy as it allows for code reuse with the delete_student function using it and allowing for the get_student(...) to be used as its own independent function for testing. 
 
 2. Another interesting aspect of the `get_student(...)` function is how its function prototype requires the caller to provide the storage for the `student_t` structure:
 
@@ -73,7 +73,7 @@ Please answer the following questions and submit in your repo for the second ass
     ```
     In this implementation the storage for the student record is allocated on the heap using `malloc()` and passed back to the caller when the function returns. What do you think about this alternative implementation of `get_student(...)`?  Address in your answer why it work work, but also think about any potential problems it could cause.  
     
-    > **ANSWER:** This alternative implemenation of get_student(...) does work because using the malloc(...) function causes the student to be declared on the heap which would avoid memory leaks. This implemenation could cause potential problems through the neccessity of freeing the data every time. The implementation could cause storage problems through the creation of students on the stack before the student is even found.
+    > **ANSWER:** This alternative implemenation of get_student(...) does work because using the malloc(...) function causes the student to be declared on the heap which would avoid memory leaks. This implemenation could cause potential problems through the neccessity of freeing the data every time. The implementation could cause storage problems through the creation of students on the stack before the student is even found leading to too many students being made relative to the storage allocated on the stack.
 
 
 4. Lets take a look at how storage is managed for our simple database. Recall that all student records are stored on disk using the layout of the `student_t` structure (which has a size of 64 bytes).  Lets start with a fresh database by deleting the `student.db` file using the command `rm ./student.db`.  Now that we have an empty database lets add a few students and see what is happening under the covers.  Consider the following sequence of commands:
