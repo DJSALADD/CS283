@@ -124,14 +124,14 @@ int add_student(int fd, int id, char *fname, char *lname, int gpa){
         return ERR_DB_FILE;
     }
     
-    // Empty Student
+    // If the student does not exist, you fill them into an empty equivalent
     student_t new_student;
     if (read(fd, &new_student, STUDENT_RECORD_SIZE) != STUDENT_RECORD_SIZE)
     {
-        memcpy(&new_student, &EMPTY_STUDENT_RECORD, sizeof(student_t));
+        memcpy(&new_student, &EMPTY_STUDENT_RECORD, STUDENT_RECORD_SIZE);
     }
    
-    // Student exists as nothing
+    // Check if read student is occupying a space
     if (memcmp(&new_student, &EMPTY_STUDENT_RECORD, STUDENT_RECORD_SIZE) != 0)
     {
         printf(M_ERR_DB_ADD_DUP, id);
@@ -334,7 +334,17 @@ int print_db(int fd){
 
         // Check if the record is non-empty using memcmp()
         if (memcmp(&student, &EMPTY_STUDENT_RECORD, STUDENT_RECORD_SIZE) != 0) {
-            print_student(student);
+            // Print the header only once when the first valid record is found
+            if (!record_found) {
+                printf(STUDENT_PRINT_HDR_STRING, "ID", "FIRST NAME", "LAST_NAME", "GPA");
+                record_found = 1;
+            }
+
+            // Convert GPA from int to float
+            float gpa = student.gpa / 100.0;
+
+            // Print the student's information
+            printf(STUDENT_PRINT_FMT_STRING, student.id, student.fname, student.lname, gpa);
         }
     }
 
@@ -381,7 +391,7 @@ int print_db(int fd){
  *            
  */
 void print_student(student_t *s){
-    // Check if the provided student pointer is valid
+    // Check if the student pointer is valid
     if (s == NULL || s->id == DELETED_STUDENT_ID) {
         printf(M_ERR_STD_PRINT);
         return;
@@ -393,7 +403,7 @@ void print_student(student_t *s){
     // Convert GPA from integer to float
     float gpa = s->gpa / 100.0;
 
-    // Print student data in the required format
+    // Print student data
     printf(STUDENT_PRINT_FMT_STRING, s->id, s->fname, s->lname, gpa);
 }
 
