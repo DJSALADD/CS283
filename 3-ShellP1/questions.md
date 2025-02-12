@@ -21,8 +21,8 @@
 - You should have also learned about "pipes". Redirection and piping both involve controlling input and output in the shell, but they serve different purposes. Explain the key differences between redirection and piping.
 
     > **Answer**:  Redirection directs input or output to or from files while piping connects output of one command to another commands input. Redirection only uses two files, while piping can use multiple commands.
-    > Piping uses the "|" character while redirection uses ">", "<", and "<<"
-fil
+    > Piping uses the "|" character while redirection uses ">", "<", and "<<".
+
 - STDERR is often used for error messages, while STDOUT is for regular output. Why is it important to keep these separate in a shell?
 
     > **Answer**:  _start here_
