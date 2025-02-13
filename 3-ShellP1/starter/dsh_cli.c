@@ -88,8 +88,7 @@ void printDragon() {
 }    
     
 int main() {
-
-    char cmd_buff[SH_CMD_MAX];  // Buffer for user input
+    char *cmd_buff = malloc(SH_CMD_MAX);  // Mallocing buffer for user input
     int rc = 0;
     command_list_t clist;  // Structure to store parsed commands
 
