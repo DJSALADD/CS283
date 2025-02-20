@@ -8,6 +8,8 @@
 #include <sys/wait.h>
 #include "dshlib.h"
 
+#include <errno.h>
+
 /*
  * Implement your exec_local_cmd_loop function by building a loop that prompts the 
  * user for input.  Use the SH_PROMPT constant from dshlib.h and then
@@ -53,6 +55,23 @@
  */
 
 extern void print_dragon();
+
+static int last_rc = 0;  // Store the return code of the last executed command
+
+// Function to print a suitable error message based on errno
+void print_error_message() {
+    switch (errno) {
+        case ENOENT:
+            printf("Command not found in PATH\n");
+            break;
+        case EACCES:
+            printf("Permission denied\n");
+            break;
+        default:
+            printf("Unknown error: %s\n", strerror(errno));
+            break;
+    }
+}
 
 int build_cmd_buff(char *cmd_buff, cmd_buff_t *cmd) {
     if (!cmd_buff || !*cmd_buff) {
@@ -139,6 +158,10 @@ Built_In_Cmds exec_built_in_cmd(cmd_buff_t *cmd) {
         return BI_EXECUTED;
     }
 
+    if (strcmp(cmd->argv[0], "rc") == 0) {
+        printf("%d\n",last_rc);
+        return BI_EXECUTED;
+    }
 
     return BI_NOT_BI;  // Command is not built-in
 }
@@ -152,6 +175,9 @@ Built_In_Cmds match_command(const char *input) {
     }
     if (strcmp(input, DRAGON_CMD) == 0) {
         return BI_CMD_DRAGON;
+    }
+    if (strcmp(input, "rc") == 0) {
+        return BI_RC;
     }
     return BI_NOT_BI;
 }
@@ -195,22 +221,25 @@ int exec_local_cmd_loop()
         // TODO IMPLEMENT if not built-in command, fork/exec as an external command
         // for example, if the user input is "ls -l", you would fork/exec the command "ls" with the arg "-l"
         pid_t pid = fork();
+        int status;
 
         if (pid == 0) {  // Child process
             execvp(cmd.argv[0], cmd.argv);
-            perror("execvp");  // If execvp fails
-            exit(ERR_EXEC_CMD);
+            print_error_message();
+            last_rc = errno;
+            exit(errno);
         } 
         else if (pid > 0) {  // Parent process
-            int status;
             waitpid(pid, &status, 0);  // Wait for child process
-            if (!WIFEXITED(status)) {  // Check if child exited normally
-                printf("Child process did not exit normally\n");
-                return WIFEXITED(status);
-            } 
+            if (WIFEXITED(status)) {
+                last_rc = WEXITSTATUS(status);  // Get the return code
+            } else {
+                last_rc = -1;  // If the child process failed to exit normally
+            }
         } 
         else {  // Fork failed
             perror("fork");
+            last_rc = errno;
         }
     }
     

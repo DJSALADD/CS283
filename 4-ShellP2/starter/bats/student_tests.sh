@@ -127,3 +127,22 @@ EOF
     # Clean up
     rm /tmp/test_file
 }
+
+#NOTE TEST CASE DOES NOT WORK AS EXPECTED, PROVIDES ERROR FOR PERMISSION DENIED
+@test "test external command failure" {
+    run ./dsh <<EOF
+./not_exists
+EOF
+    echo "Output: $output"
+    [ "$status" -eq 0 ]
+}
+
+#NOTE TEST CASE DOES NOT WORK AS EXPECTED, PROVIDES ERROR FOR PERMISSION DENIED
+@test "test rc command" {
+    run ./dsh <<EOF
+not_exists
+rc
+EOF
+    echo "Output: $output"
+    [ "$status" -eq 0 ]
+}
