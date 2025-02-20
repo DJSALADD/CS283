@@ -204,6 +204,10 @@ int exec_local_cmd_loop()
         else if (pid > 0) {  // Parent process
             int status;
             waitpid(pid, &status, 0);  // Wait for child process
+            if (!WIFEXITED(status)) {  // Check if child exited normally
+                printf("Child process did not exit normally\n");
+                return WIFEXITED(status);
+            } 
         } 
         else {  // Fork failed
             perror("fork");
