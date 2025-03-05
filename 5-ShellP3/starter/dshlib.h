@@ -45,6 +45,8 @@ typedef struct command_list{
 
 #define SH_PROMPT "dsh3> "
 #define EXIT_CMD "exit"
+#define CD_CMD "cd"
+#define DRAGON_CMD "dragon"
 #define EXIT_SC     99
 
 //Standard Return Codes
@@ -73,6 +75,7 @@ typedef enum {
     BI_CMD_CD,
     BI_NOT_BI,
     BI_EXECUTED,
+    BI_RC,
 } Built_In_Cmds;
 Built_In_Cmds match_command(const char *input); 
 Built_In_Cmds exec_built_in_cmd(cmd_buff_t *cmd);
