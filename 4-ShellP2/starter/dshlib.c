@@ -184,7 +184,7 @@ Built_In_Cmds match_command(const char *input) {
 
 int exec_local_cmd_loop()
 {
-    char *cmd_buff = malloc(SH_CMD_MAX);;
+    char *cmd_buff = malloc(SH_CMD_MAX);
     int rc = 0;
     cmd_buff_t cmd;
 
@@ -195,6 +195,7 @@ int exec_local_cmd_loop()
             printf("\n");
             break;
         }
+        printf("2");
 
         // remove the trailing \n from cmd_buff
         cmd_buff[strcspn(cmd_buff, "\n")] = '\0';
