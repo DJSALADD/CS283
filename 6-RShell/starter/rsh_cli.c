@@ -92,7 +92,74 @@
  */
 int exec_remote_cmd_loop(char *address, int port)
 {
-    return WARN_RDSH_NOT_IMPL;
+    char *cmd_buff = (char *)malloc(RDSH_COMM_BUFF_SZ);;
+    char *rsp_buff = (char *)malloc(RDSH_COMM_BUFF_SZ);;
+    int cli_socket;
+    ssize_t io_size;
+    int is_eof;
+
+    // TODO set up cmd and response buffs
+
+    cli_socket = start_client(address,port);
+    if (cli_socket < 0){
+        perror("start client");
+        return client_cleanup(cli_socket, cmd_buff, rsp_buff, ERR_RDSH_CLIENT);
+    }
+
+    while (1) 
+    {
+        // TODO print prompt
+
+        // TODO fgets input
+
+        // TODO send() over cli_socket
+
+        // TODO recv all the results
+
+        // TODO break on exit command
+        // Print a prompt
+        printf("Enter command: ");
+
+        // Get input from the user
+        if (fgets(cmd_buff, 1024, stdin) == NULL) {
+            perror("fgets failed");
+            break;
+        }
+
+        // If the user types "exit", break out of the loop
+        if (strncmp(cmd_buff, "exit", 4) == 0) {
+            break;
+        }
+
+        // Send the command to the server
+        io_size = send(cli_socket, cmd_buff, strlen(cmd_buff), 0);
+        if (io_size < 0) {
+            perror("send failed");
+            break;
+        }
+
+        // Now receive the echoed response from the server
+        while (1) {
+            io_size = recv(cli_socket, rsp_buff, 1024, 0);
+            if (io_size < 0) {
+                perror("recv failed");
+                break;
+            }
+
+            // Check if we've received anything
+            if (io_size > 0) {
+                // Print the received response (echoed command)
+                printf("Echo: %.*s", (int)io_size, rsp_buff);
+
+                // If the last byte is EOF, break out of the recv loop
+                if (rsp_buff[io_size - 1] == RDSH_EOF_CHAR) {
+                    break;
+                }
+            }
+        }
+    }
+
+    return client_cleanup(cli_socket, cmd_buff, rsp_buff, OK);
 }
 
 /*
@@ -119,7 +186,38 @@ int exec_remote_cmd_loop(char *address, int port)
  * 
  */
 int start_client(char *server_ip, int port){
-    return WARN_RDSH_NOT_IMPL;
+    struct sockaddr_in addr;
+    int cli_socket;
+    int ret;
+
+    // Step 1: Create a socket
+    cli_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (cli_socket < 0) {
+        perror("socket creation failed");
+        return ERR_RDSH_CLIENT; // Return error code if socket creation fails
+    }
+
+    // Step 2: Set up the server address structure
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    
+    // Convert IP address from text to binary form
+    ret = inet_pton(AF_INET, server_ip, &addr.sin_addr);
+    if (ret <= 0) {
+        perror("Invalid address/Address not supported");
+        return ERR_RDSH_CLIENT; // Return error if IP address is invalid
+    }
+
+    // Step 3: Connect to the server
+    ret = connect(cli_socket, (struct sockaddr *)&addr, sizeof(addr));
+    if (ret < 0) {
+        perror("connection failed");
+        return ERR_RDSH_CLIENT; // Return error code if connection fails
+    }
+
+
+    return cli_socket;
 }
 
 /*
