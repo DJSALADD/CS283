@@ -225,20 +225,29 @@ int process_cli_requests(int svr_socket){
     char buffer[RDSH_COMM_BUFF_SZ];
     ssize_t bytes_received; 
 
+    printf("processing a command\n");
     while(1){
         // TODO use the accept syscall to create cli_socket 
         // and then exec_client_requests(cli_socket)
-        // Accept client connection (blocking call)
         cli_socket = accept(svr_socket, NULL, NULL);
         if (cli_socket < 0) {
             perror("accept failed");
             return ERR_RDSH_COMMUNICATION;
         }
 
-        // Receive data from the client
+        printf("going to accept input\n");
+        rc = exec_client_requests(cli_socket);
         
+        if (rc == OK_EXIT) {
+            // The server should stop, break out of the loop
+            break;
+        }
 
-        // Close the client socket after processing the request
+        // If the client exits, we just move to the next client
+        if (rc == OK) {
+            continue;
+        }
+
         close(cli_socket);
     }
 
@@ -294,6 +303,7 @@ int exec_client_requests(int cli_socket) {
     int cmd_rc;
     int last_rc;
     char *io_buff;
+    ssize_t bytes_received;
 
     io_buff = malloc(RDSH_COMM_BUFF_SZ);
     if (io_buff == NULL){
@@ -311,11 +321,29 @@ int exec_client_requests(int cli_socket) {
         // Null-terminate the received data
         io_buff[bytes_received] = '\0';
 
-        // Echo the received data back to the client
-        if (send(cli_socket, buffer, bytes_received, 0) < 0) {
+        // Handle commands
+        if (strncmp(io_buff, "exit", 4) == 0) {
+            // Client requested exit, close the connection and exit loop
+            printf("going to exit\n");
+            send_message_eof(cli_socket);  // Send EOF to the client
+            close(cli_socket);  // Close client connection
+            return OK;  // Return OK to indicate that the server should wait for the next connection
+        }
+
+        if (strncmp(io_buff, "stop-server", 11) == 0) {
+            // Client requested stop-server, shutdown the server
+            send_message_eof(cli_socket);  // Send EOF to the client
+            close(cli_socket);  // Close client connection
+            return OK_EXIT;  // Indicate that the server should stop
+        }
+
+        // If the command is not 'exit' or 'stop-server', echo the command back
+        if (send(cli_socket, io_buff, bytes_received, 0) < 0) {
             perror("send failed");
         }
     }
+
+    free(io_buff);
 
     return WARN_RDSH_NOT_IMPL;
 }
@@ -336,8 +364,10 @@ int exec_client_requests(int cli_socket) {
  */
 int send_message_eof(int cli_socket){
     int send_len = (int)sizeof(RDSH_EOF_CHAR);
+    printf("size of %d\n", send_len);
     int sent_len;
     sent_len = send(cli_socket, &RDSH_EOF_CHAR, send_len, 0);
+    printf("size of2 %d\n", send_len);
 
     if (sent_len != send_len){
         return ERR_RDSH_COMMUNICATION;
