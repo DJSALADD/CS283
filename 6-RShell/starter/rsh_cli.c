@@ -95,8 +95,9 @@ int exec_remote_cmd_loop(char *address, int port)
     char *cmd_buff = (char *)malloc(RDSH_COMM_BUFF_SZ);;
     char *rsp_buff = (char *)malloc(RDSH_COMM_BUFF_SZ);;
     int cli_socket;
-    ssize_t io_size;
+    int io_size;
     int is_eof;
+    int sent_size;
 
     // TODO set up cmd and response buffs
 
@@ -121,8 +122,8 @@ int exec_remote_cmd_loop(char *address, int port)
        cmd_buff[strcspn(cmd_buff, "\n")] = '\0';
         
         // TODO send() over cli_socket
-        io_size = send(cli_socket, cmd_buff, strlen(cmd_buff) + 1, 0); // +1 to include the null terminator
-        if (io_size < 0) {
+        sent_size = send(cli_socket, cmd_buff, strlen(cmd_buff) + 1, 0); // +1 to include the null terminator
+        if (sent_size < 0) {
             perror("send failed");
             return client_cleanup(cli_socket, cmd_buff, rsp_buff, ERR_RDSH_COMMUNICATION);
         }
@@ -134,9 +135,6 @@ int exec_remote_cmd_loop(char *address, int port)
                 perror("recv failed");
                 return client_cleanup(cli_socket, cmd_buff, rsp_buff, ERR_RDSH_COMMUNICATION);
             }
-
-            is_eof = (rsp_buff == RDSH_EOF_CHAR) ? 1 : 0;
-            printf("is_eof %d\n", is_eof);
  
             if (io_size == 0) {
                 printf("\nNo data received. Server might be down.\n");
@@ -147,12 +145,18 @@ int exec_remote_cmd_loop(char *address, int port)
             printf("%.*s", (int)io_size, rsp_buff);
  
             // TODO break on exit command
-            is_eof = (rsp_buff == RDSH_EOF_CHAR) ? 1 : 0;
+            is_eof = (rsp_buff[io_size - 1] == RDSH_EOF_CHAR) ? 1 : 0;
+            if (is_eof) {
+                break; // Break the loop if EOF is received
+            }
+            printf("%.*s", (int)io_size, rsp_buff);
             if (is_eof) {
                 break; // Break the loop if EOF is received
             }
         }
-    }
+        if (strcmp(cmd_buff, "exit") == 0 || strcmp(cmd_buff, "stop-server") == 0)
+            break;
+        }
 
     return client_cleanup(cli_socket, cmd_buff, rsp_buff, OK);
 }
