@@ -10,13 +10,19 @@
 #include <fcntl.h>
 
 //INCLUDES for extra credit
-//#include <signal.h>
-//#include <pthread.h>
+#include <signal.h>
+#include <pthread.h>
 //-------------------------
 
 #include "dshlib.h"
 #include "rshlib.h"
 
+
+static int is_threaded = 0;
+
+void set_threaded_server(int val) {
+    is_threaded = val;
+}
 
 /*
  * start_server(ifaces, port, is_threaded)
@@ -56,15 +62,22 @@ int start_server(char *ifaces, int port, int is_threaded){
     //
 
     svr_socket = boot_server(ifaces, port);
-    if (svr_socket < 0){
-        int err_code = svr_socket;  //server socket will carry error code
+    if (svr_socket < 0) {
+        int err_code = svr_socket;  // Server socket will carry error code
         return err_code;
+    }
+
+    // Enable threaded mode if requested
+    if (is_threaded) {
+        set_threaded_server(1);
+        printf("Server running in multi-threaded mode.\n");
+    } else {
+        printf("Server running in single-threaded mode.\n");
     }
 
     rc = process_cli_requests(svr_socket);
 
     stop_server(svr_socket);
-
 
     return rc;
 }
@@ -226,17 +239,59 @@ int process_cli_requests(int svr_socket){
             perror("accept failed");
             return ERR_RDSH_COMMUNICATION;
         }
-        rc = exec_client_requests(cli_socket);
 
-        close(cli_socket);
-        if (rc == ERR_RDSH_COMMUNICATION || rc == OK_EXIT) {
-            // The server should stop, break out of the loop
-            break;
+        if (is_threaded) {
+            // Create a new thread for the client
+            rc = exec_client_thread(svr_socket, cli_socket);
+            if (rc != OK) {
+                close(cli_socket);
+                continue;
+            }
+        } 
+        else {
+            // Single-threaded mode: handle the client in the main thread
+            rc = exec_client_requests(cli_socket);
+            close(cli_socket);
+
+            if (rc == ERR_RDSH_COMMUNICATION || rc == OK_EXIT) {
+                break;
+            }
         }
 
     }
 
     return rc;
+}
+
+void *handle_client(void *arg) {
+    int cli_socket = *(int *)arg;
+    free(arg);  // Free the allocated memory for the client socket
+
+    exec_client_requests(cli_socket);
+
+    close(cli_socket);
+    return NULL;
+}
+
+int exec_client_thread(int main_socket, int cli_socket) {
+    pthread_t thread_id;
+    int *cli_sock_ptr = malloc(sizeof(int));
+    if (cli_sock_ptr == NULL) {
+        perror("malloc failed");
+        return ERR_RDSH_SERVER;
+    }
+    *cli_sock_ptr = cli_socket;
+
+    if (pthread_create(&thread_id, NULL, handle_client, cli_sock_ptr) != 0) {
+        perror("pthread_create failed");
+        free(cli_sock_ptr);
+        return ERR_RDSH_SERVER;
+    }
+
+    // Detach the thread to handle its own cleanup
+    pthread_detach(thread_id);
+
+    return OK;
 }
 
 /*

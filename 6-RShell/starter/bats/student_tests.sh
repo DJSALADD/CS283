@@ -281,22 +281,61 @@ EOF
 
 # REMOTE TESTS
 
+# Constants
 RDSH_DEF_PORT=1234
 RDSH_DEF_SVR_INTERFACE="0.0.0.0"
 RDSH_DEF_CLI_CONNECT="127.0.0.1"
 
+# Global variables
+SERVER_PID=
+MULTI_THREADED=0  # Default to single-threaded
+
+# Setup function for single-threaded tests
 setup() {
-    ./dsh -s ${RDSH_DEF_SVR_INTFACE}:${RDSH_DEF_PORT} &
+    # Check if the port is already in use
+    if lsof -i :${RDSH_DEF_PORT} > /dev/null; then
+        echo "Port ${RDSH_DEF_PORT} is already in use. Killing existing processes..."
+        fuser -k ${RDSH_DEF_PORT}/tcp
+        sleep 1  # Wait for the port to be released
+    fi
+
+    # Start the server in the appropriate mode
+    if [ "$MULTI_THREADED" -eq 1 ]; then
+        echo "Starting server in multi-threaded mode..."
+        ./dsh -s ${RDSH_DEF_SVR_INTERFACE}:${RDSH_DEF_PORT} -x &
+    else
+        echo "Starting server in single-threaded mode..."
+        ./dsh -s ${RDSH_DEF_SVR_INTERFACE}:${RDSH_DEF_PORT} &
+    fi
+
     SERVER_PID=$!
-    sleep 1
+    sleep 1  # Give the server time to start
+
+    # Verify that the server is running
+    if ! ps -p $SERVER_PID > /dev/null; then
+        echo "Server failed to start. Exiting test."
+        exit 1
+    fi
+    echo "Server started with PID $SERVER_PID."
 }
 
+# Teardown function
 teardown() {
     if ps -p $SERVER_PID > /dev/null; then
-        kill $SERVER_PID
+        echo "Stopping server with PID $SERVER_PID..."
+        kill $SERVER_PID || kill -9 $SERVER_PID  # Force kill if necessary
+        sleep 1  # Wait for the server to shut down
+    else
+        echo "Server PID $SERVER_PID not found. It may have already exited."
     fi
-    sleep 1
 }
+
+# Helper function for multi-threaded tests
+setup_multi_threaded() {
+    MULTI_THREADED=1
+    setup
+}
+
 
 @test "Remote: Client can connect to server" {
     run timeout 2 ./dsh -c ${RDSH_DEF_CLI_CONNECT}:${RDSH_DEF_PORT} <<EOF
@@ -488,4 +527,133 @@ EOF
     echo "Output: $output"
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Done" ]]
+}
+
+
+# EXTRA CREDIT
+
+@test "Extra Credit: Multiple clients connecting concurrently" {
+    setup_multi_threaded
+
+    # Run two clients in the background and capture their output
+    ./dsh -c ${RDSH_DEF_CLI_CONNECT}:${RDSH_DEF_PORT} <<EOF > client1_output.txt &
+    echo Client 1
+    sleep 1
+    exit
+EOF
+    CLIENT1_PID=$!
+
+    ./dsh -c ${RDSH_DEF_CLI_CONNECT}:${RDSH_DEF_PORT} <<EOF > client2_output.txt &
+    echo Client 2
+    sleep 1
+    exit
+EOF
+    CLIENT2_PID=$!
+
+    # Wait for both clients to finish
+    wait $CLIENT1_PID
+    wait $CLIENT2_PID
+
+    # Stop the server
+    if ps -p $SERVER_PID > /dev/null; then
+        kill $SERVER_PID || kill -9 $SERVER_PID
+    fi
+
+    # Read client output
+    CLIENT1_OUTPUT=$(cat client1_output.txt)
+    CLIENT2_OUTPUT=$(cat client2_output.txt)
+    echo "Client 1 Output: $CLIENT1_OUTPUT"
+    echo "Client 2 Output: $CLIENT2_OUTPUT"
+
+    # Verify output
+    [[ "$CLIENT1_OUTPUT" =~ "Client 1" ]]
+    [[ "$CLIENT2_OUTPUT" =~ "Client 2" ]]
+}
+
+@test "Extra Credit: Concurrent command execution" {
+    setup_multi_threaded
+
+    # Run two clients in the background and capture their output
+    ./dsh -c ${RDSH_DEF_CLI_CONNECT}:${RDSH_DEF_PORT} <<EOF > client1_output.txt &
+    sleep 1
+    echo Client 1 done
+    exit
+EOF
+    CLIENT1_PID=$!
+
+    ./dsh -c ${RDSH_DEF_CLI_CONNECT}:${RDSH_DEF_PORT} <<EOF > client2_output.txt &
+    echo Client 2 done
+    exit
+EOF
+    CLIENT2_PID=$!
+
+    # Wait for both clients to finish
+    wait $CLIENT1_PID
+    wait $CLIENT2_PID
+
+    # Stop the server
+    teardown
+
+    # Read client output
+    CLIENT1_OUTPUT=$(cat client1_output.txt)
+    CLIENT2_OUTPUT=$(cat client2_output.txt)
+    echo "Client 1 Output: $CLIENT1_OUTPUT"
+    echo "Client 2 Output: $CLIENT2_OUTPUT"
+
+    # Verify output
+    [[ "$CLIENT1_OUTPUT" =~ "Client 1 done" ]]
+    [[ "$CLIENT2_OUTPUT" =~ "Client 2 done" ]]
+}
+
+@test "Remote: Stress test with multiple clients" {
+    setup_multi_threaded
+
+    # Run 5 clients in the background and capture their output
+    for i in {1..5}; do
+        ./dsh -c ${RDSH_DEF_CLI_CONNECT}:${RDSH_DEF_PORT} <<EOF > client${i}_output.txt &
+        echo Client $i
+        sleep 1
+        exit
+EOF
+        CLIENT_PIDS[$i]=$!
+    done
+
+    # Wait for all clients to finish
+    for pid in "${CLIENT_PIDS[@]}"; do
+        wait $pid
+    done
+
+    # Stop the server
+    teardown
+
+    # Read and verify client output
+    for i in {1..5}; do
+        CLIENT_OUTPUT=$(cat client${i}_output.txt)
+        echo "Client $i Output: $CLIENT_OUTPUT"
+        [[ "$CLIENT_OUTPUT" =~ "Client $i" ]]
+    done
+}
+
+@test "Remote: Handling client disconnections" {
+    setup_multi_threaded
+
+    # Run a client that disconnects abruptly and capture its output
+    ./dsh -c ${RDSH_DEF_CLI_CONNECT}:${RDSH_DEF_PORT} <<EOF > client_output.txt &
+    echo Client disconnecting
+    exit
+EOF
+    CLIENT_PID=$!
+
+    # Wait for the client to finish
+    wait $CLIENT_PID
+
+    # Stop the server
+    teardown
+
+    # Read client output
+    CLIENT_OUTPUT=$(cat client_output.txt)
+    echo "Client Output: $CLIENT_OUTPUT"
+
+    # Verify output
+    [[ "$CLIENT_OUTPUT" =~ "Client disconnecting" ]]
 }

@@ -1,0 +1,8 @@
+socket client mode:  addr:127.0.0.1:1234
+dsh4> Client 2
+Client 2
+Command exited with code: 0
+dsh4> Command exited with code: 0
+Command exited with code: 0
+dsh4> dsh4> 
+cmd loop returned 0
