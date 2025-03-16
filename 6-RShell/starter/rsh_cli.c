@@ -120,6 +120,11 @@ int exec_remote_cmd_loop(char *address, int port)
 
         // Remove the trailing newline character
        cmd_buff[strcspn(cmd_buff, "\n")] = '\0';
+
+        if (*cmd_buff == '\0') {
+            printf("%s", CMD_WARN_NO_CMD);
+            continue;
+        }
         
         // TODO send() over cli_socket
         sent_size = send(cli_socket, cmd_buff, strlen(cmd_buff) + 1, 0); // +1 to include the null terminator
@@ -141,7 +146,7 @@ int exec_remote_cmd_loop(char *address, int port)
                 break;
             }
  
-            // Print the received response (echoed command)
+            // Print the received response
             printf("%.*s", (int)io_size, rsp_buff);
  
             // TODO break on exit command
@@ -154,9 +159,11 @@ int exec_remote_cmd_loop(char *address, int port)
                 break; // Break the loop if EOF is received
             }
         }
-        if (strcmp(cmd_buff, "exit") == 0 || strcmp(cmd_buff, "stop-server") == 0)
+        if (strcmp(cmd_buff, "exit") == 0 || strcmp(cmd_buff, "stop-server") == 0) {
             break;
         }
+            
+    }
 
     return client_cleanup(cli_socket, cmd_buff, rsp_buff, OK);
 }

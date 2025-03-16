@@ -45,7 +45,7 @@ typedef struct command_list{
 #define PIPE_CHAR   '|'
 #define PIPE_STRING "|"
 
-#define SH_PROMPT "dsh3> "
+#define SH_PROMPT "dsh4> "
 #define EXIT_CMD "exit"
 #define CD_CMD "cd"
 #define DRAGON_CMD "dragon"

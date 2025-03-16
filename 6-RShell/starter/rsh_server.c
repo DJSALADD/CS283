@@ -283,15 +283,14 @@ int process_cli_requests(int svr_socket){
 int exec_client_requests(int cli_socket) {
     int io_size;
     command_list_t cmd_list;
-    int rc;
-    int cmd_rc;
-    int last_rc;
     char *io_buff;
 
     int total_bytes;
     int build_cmd_list_rc;
     int exec_cmd_rc;
+    Built_In_Cmds bi_cmd;
 
+    // Allocate buffer for receiving client commands
     io_buff = malloc(RDSH_COMM_BUFF_SZ);
     if (io_buff == NULL){
         return ERR_RDSH_SERVER;
@@ -299,27 +298,30 @@ int exec_client_requests(int cli_socket) {
 
     while(1) {
         total_bytes = 0;
+        // Read client command until null terminator is received
         while (1) {
             io_size = recv(cli_socket, io_buff + total_bytes, 1, 0);
             if (io_size <= 0) {
                 free(io_buff);
-                return ERR_RDSH_COMMUNICATION;
+                return ERR_RDSH_COMMUNICATION; // Error in communication
             }
             total_bytes += io_size;
             if (io_buff[total_bytes - 1] == '\0') {
-                break;
+                break; // End of command string
             }
             if (total_bytes >= RDSH_COMM_BUFF_SZ) {
-                break;
+                break; // Buffer size exceeded
             }
         }
 
-        if (total_bytes == 1) {
+        if (total_bytes == 1) { // Ignore empty command
             continue;
         }
 
+        // Parse the command input into a structured list
         build_cmd_list_rc = build_cmd_list(io_buff, &cmd_list);
 
+        // Handle parsing errors and printing warnings/error messages
         if (build_cmd_list_rc == WARN_NO_CMDS) {
             printf("%s", CMD_WARN_NO_CMD);
         } else if (build_cmd_list_rc == ERR_TOO_MANY_COMMANDS) {
@@ -331,27 +333,33 @@ int exec_client_requests(int cli_socket) {
             continue;
         }
 
-        if (rsh_built_in_cmd(&cmd_list.commands[0]) == BI_CMD_STOP_SVR)
-        {
-            send_message_string(cli_socket, RCMD_MSG_SVR_STOP_REQ);
-            send_message_eof(cli_socket);
-            free(io_buff);
-            return OK_EXIT;
-        }
-        if (rsh_built_in_cmd(&cmd_list.commands[0]) == BI_CMD_EXIT)
-        {
-            send_message_eof(cli_socket);
-            break;
+        // Check if the command is a built-in command
+        bi_cmd = rsh_match_command(cmd_list.commands[0].argv[0]);
+
+        if (bi_cmd != BI_NOT_BI) {
+            Built_In_Cmds executeBuiltInCMD = rsh_built_in_cmd(&cmd_list.commands[0]);
+            if (executeBuiltInCMD == BI_CMD_STOP_SVR) {            
+                send_message_string(cli_socket, RCMD_MSG_SVR_STOP_REQ);
+                send_message_eof(cli_socket);
+                free(io_buff);
+                return OK_EXIT; // Stop server request
+            }
+            else if (executeBuiltInCMD == BI_CMD_EXIT) {
+                send_message_eof(cli_socket);
+                break; // Exit client request
+            }
         }
 
+        // Execute non built-in commands using a pipeline
         exec_cmd_rc = rsh_execute_pipeline(cli_socket, &cmd_list);
 
+        // Handle command execution result
         if (exec_cmd_rc == ERR_RDSH_CMD_EXEC) {
             send_message_string(cli_socket, CMD_ERR_RDSH_EXEC);
         }
         else {
             char rc_msg[120];
-            snprintf(rc_msg, sizeof(rc_msg), "Command exited with code: %d\n", cmd_rc);
+            snprintf(rc_msg, sizeof(rc_msg), "Command exited with code: %d\n", exec_cmd_rc);
             send_message_string(cli_socket, rc_msg);
         }
         send_message_eof(cli_socket);
@@ -463,7 +471,6 @@ int rsh_execute_pipeline(int cli_sock, command_list_t *clist) {
     int pipes[clist->num - 1][2];  // Array of pipes
     pid_t pids[clist->num];
     int  pids_st[clist->num];         // Array to store process IDs
-    Built_In_Cmds bi_cmd;
     int exit_code;
 
     int num_cmds = clist->num;
@@ -481,36 +488,36 @@ int rsh_execute_pipeline(int cli_sock, command_list_t *clist) {
 
         // TODO HINT you can dup2(cli_sock with STDIN_FILENO, STDOUT_FILENO, etc.
         pids[i] = fork();
-        if (pids[i] < 0)
-        {
+        if (pids[i] < 0) {
             perror("fork");
             exit(EXIT_FAILURE);
         }
-        if (pids[i] == 0)
-        {
-            if (i == 0)
-            {
-                dup2(cli_sock, STDIN_FILENO);
+        if (pids[i] == 0) {  // Child process
+            // Set up input redirection
+            if (i == 0) {
+                dup2(cli_sock, STDIN_FILENO);  // First command reads from client socket
+            } else {
+                dup2(pipes[i - 1][0], STDIN_FILENO);  // Intermediate commands read from previous pipe
             }
-            else
-            {
-                dup2(pipes[i - 1][0], STDIN_FILENO);
+            
+            // Set up output redirection
+            if (i == num_cmds - 1) {
+                dup2(cli_sock, STDOUT_FILENO);  // Last command writes to client socket
+                dup2(cli_sock, STDERR_FILENO);  // Redirect errors to client socket as well
+            } else {
+                dup2(pipes[i][1], STDOUT_FILENO);  // Intermediate commands write to next pipe
             }
-            if (i == num_cmds - 1)
-            {
-                dup2(cli_sock, STDOUT_FILENO);
-                dup2(cli_sock, STDERR_FILENO);
-            }
-            else
-            {
-                dup2(pipes[i][1], STDOUT_FILENO);
-            }
-            for (int j = 0; j < num_cmds - 1; j++)
-            {
+            
+            // Close all pipe ends to prevent resource leaks
+            for (int j = 0; j < num_cmds - 1; j++) {
                 close(pipes[j][0]);
                 close(pipes[j][1]);
             }
+            
+            // Execute the command
             execvp(clist->commands[i].argv[0], clist->commands[i].argv);
+            
+            // If execvp fails, send an error message to the client and exit
             send_message_string(cli_sock, "exec: no such file or directory");
             send_message_eof(cli_sock);
             exit(ERR_RDSH_CMD_EXEC);
